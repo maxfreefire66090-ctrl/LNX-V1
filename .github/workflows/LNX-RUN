@@ -1,0 +1,171 @@
+name: Running LNX Project 🚀
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+env:
+  NGROK_TOKEN: "3EcxNv9V3TVduvgRJkYQBZ1ha0h_4NgAqGxAFtNi7ZUDDFNAW"
+  NGROK_DOMAIN: "negate-cornmeal-obituary.ngrok-free.dev"
+
+jobs:
+  run-linux-terminal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Auto-Clean Old Runs
+        run: |
+          echo "🧹 পুরনো রান হিস্ট্রি গিটহাব স্টোরেজ থেকে মোছা হচ্ছে..."
+          gh run list --status completed --limit 10 --json databaseId -q '.[].databaseId' | while read -r run_id; do
+            gh run delete "$run_id" || true
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Optimize Network & TCP Keep-Alive
+        run: |
+          echo "⚡ কার্নেল টিসিপি কিপ-অ্যালাইভ অপ্টিমাইজ করা হচ্ছে..."
+          sudo sysctl -w net.ipv4.tcp_keepalive_time=30 || true
+          sudo sysctl -w net.ipv4.tcp_keepalive_intvl=5 || true
+          sudo sysctl -w net.ipv4.tcp_keepalive_probes=3 || true
+          sudo sysctl -w net.core.somaxconn=4096 || true
+
+      - name: Install Dependencies
+        run: |
+          pip install gradio psutil pygments ansi2html fastapi starlette
+
+      - name: Download & Setup Ngrok
+        run: |
+          curl -sLo ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
+          tar -xzf ngrok.tgz
+          chmod +x ngrok
+          ./ngrok config add-authtoken $NGROK_TOKEN
+
+      - name: Core Run & Infinity Loop Setup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+
+          python3 app.py &
+          APP_PID=$!
+          sleep 4
+
+          echo "⏳ Ngrok কানেক্ট করা হচ্ছে..."
+          for i in {1..8}; do
+            ./ngrok http 7860 --domain=$NGROK_DOMAIN --log=stdout > ngrok.log 2>&1 &
+            NGROK_PID=$!
+            sleep 6
+
+            if grep -q "url=https://$NGROK_DOMAIN" ngrok.log; then
+              echo "🎉 সফল! ডোমেন: https://$NGROK_DOMAIN"
+              break
+            else
+              kill -9 $NGROK_PID 2>/dev/null || true
+              sleep 15
+            fi
+          done
+
+          echo "🤖 [System Bot] ইঞ্জিন প্রস্তুত! কিপ-অ্যালাইভ ও অটো-রিলোডার শুরু হচ্ছে..."
+
+          # 🔄 Anti-Stall, System Bot & Auto-Reloader Loop
+          LOOP_COUNTER=0
+          while true; do
+            sleep 10
+            LOOP_COUNTER=$((LOOP_COUNTER+1))
+
+            # প্রতি ১ মিনিট পর পর (৬ x ১০ সেকেন্ড = ৬০ সেকেন্ড) কিপ-অ্যালাইভ ও আপটাইম চেক
+            if [ $LOOP_COUNTER -ge 6 ]; then
+              LOOP_COUNTER=0
+
+              # ⏱️ uptime কমান্ড দিয়ে সিস্টেম আপটাইম নেওয়া হচ্ছে
+              UPTIME_STR=$(uptime -p 2>/dev/null || uptime)
+              UPTIME_SECONDS=$(awk '{print int($1)}' /proc/uptime 2>/dev/null || echo 0)
+
+              # ✅ হুবহু আপনার কিপ-অ্যালাইভ ইঞ্জিন লগ
+              echo "✅ [Keep-Alive] ইঞ্জিন রানিং... $(date)"
+              echo "🤖 [System Bot] আপটাইম: ${UPTIME_STR} (${UPTIME_SECONDS}s)"
+
+              # ⏰ ৫ ঘণ্টা ৫৫ মিনিট = ৩৫৫ মিনিট = ২১৩০০ সেকেন্ড
+              if [ "$UPTIME_SECONDS" -ge 21300 ]; then
+                echo "⚠️ [System Bot] ৫ ঘণ্টা ৫৫ মিনিট পূর্ণ হয়েছে! নতুন সেশনের রিকোয়েস্ট পাঠানো হচ্ছে..."
+                
+                REQUEST_SENT=false
+                FAIL_LOG=""
+
+                for attempt in {1..3}; do
+                  DISPATCH_OUTPUT=$(gh workflow run "${{ github.workflow }}" --ref main 2>&1)
+                  DISPATCH_STATUS=$?
+
+                  if [ $DISPATCH_STATUS -eq 0 ]; then
+                    echo "🎉 [System Bot] নতুন সেশন চালুর রিকোয়েস্ট সফল এবং কিউতে যুক্ত হয়েছে!"
+                    REQUEST_SENT=true
+                    break
+                  else
+                    FAIL_LOG="$DISPATCH_OUTPUT"
+                    echo "⚠️ রিকোয়েস্ট পাঠাতে সমস্যা ($attempt/3): $FAIL_LOG"
+                    sleep 5
+                  fi
+                done
+
+                # ৩ বার চেষ্টার পরও ফেইল করলে বিস্তারিত লগ ডিসপ্লে করা
+                if [ "$REQUEST_SENT" = false ]; then
+                  echo "=========================================================="
+                  echo "🚨 [SYSTEM BOT ALERT] নতুন সেশন চালুর রিকোয়েস্ট ব্যর্থ হয়েছে!"
+                  echo "🕒 সময়: $(date)"
+                  echo "⏱️ সিস্টেম আপটাইম: ${UPTIME_STR} (${UPTIME_SECONDS}s)"
+                  echo "❌ ব্যর্থতার মূল কারণ / Error Details:"
+                  echo "$FAIL_LOG"
+                  echo "💡 পরামর্শ: গিটহাব পারমিশন বা নেটওয়ার্ক রেসপন্স চেক করুন।"
+                  echo "=========================================================="
+                fi
+
+                # রিকোয়েস্ট সফল হোক বা ব্যর্থ - টানেল রিলিজ ও ক্লিনআপ করে নীরব মোডে চলে যাওয়া
+                echo "🛑 [System Bot] আত্মাহুতি ও ক্লিনআপ প্রক্রিয়া কার্যকর করা হচ্ছে..."
+                
+                echo "🔌 Ngrok টানেল রিলিজ করা হচ্ছে যাতে ডোমেন ফাঁকা থাকে..."
+                pkill -9 -f "ngrok" 2>/dev/null || true
+
+                echo "🧹 ব্যাকগ্রাউন্ড অ্যাপ ও সাব-প্রসেস নিষ্ক্রিয় করা হচ্ছে..."
+                kill -9 $APP_PID 2>/dev/null || true
+                pkill -9 -f "python3 app.py" 2>/dev/null || true
+
+                if [ "$REQUEST_SENT" = true ]; then
+                  echo "💤 [System Bot] নতুন সেশন কিউতে গেছে। কিপ-অ্যালাইভ ও লগ চিরতরে বন্ধ। ৬ ঘণ্টা পূর্ণ হয়ে সার্ভার ধ্বংসের অপেক্ষা..."
+                else
+                  echo "💤 [System Bot] রিকোয়েস্ট ফেইল করলেও সমস্ত প্রসেস বন্ধ। লগ দেখার সুবিধার্থে শান্তভাবে অপেক্ষা করা হচ্ছে..."
+                fi
+
+                # সম্পূর্ণ নীরব মোড (কোনো লগ বা প্রসেস চলবে না)
+                while true; do
+                  sleep 3600
+                done
+              fi
+            fi
+
+            # ⚡ আপনার আসল গিট অটো-রিলোডার (প্রতি ১০ সেকেন্ডে চেক করবে)
+            git fetch origin main -q 2>/dev/null || git fetch origin master -q 2>/dev/null || true
+            LOCAL=$(git rev-parse HEAD 2>/dev/null || true)
+            REMOTE=$(git rev-parse @{u} 2>/dev/null || echo "$LOCAL")
+            
+            if [ -n "$LOCAL" ] && [ -n "$REMOTE" ] && [ "$LOCAL" != "$REMOTE" ]; then
+              echo "⚡ নতুন কোড পাওয়া গেছে! অটো-রিস্টার্ট..."
+              git reset --hard @{u} -q || true
+              kill -9 $APP_PID 2>/dev/null || true
+              sleep 1
+              python3 app.py &
+              APP_PID=$!
+            fi
+          done
