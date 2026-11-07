@@ -8,8 +8,8 @@ permissions:
   contents: read
 
 env:
-  NGROK_TOKEN: "3EcxNv9V3TVduvgRJkYQBZ1ha0h_4NgAqGxAFtNi7ZUDDFNAW"
-  NGROK_DOMAIN: "negate-cornmeal-obituary.ngrok-free.dev"
+  NGROK_TOKEN: "3Lk9AojMgbr559hZEvXhfTnxq5c_6TPmX3K1irMYEs6Yzgmha"
+  NGROK_DOMAIN: "molehill-overcook-spotlight.ngrok-free.dev"
 
 jobs:
   run-linux-terminal:
@@ -98,9 +98,9 @@ jobs:
               echo "✅ [Keep-Alive] ইঞ্জিন রানিং... $(date)"
               echo "🤖 [System Bot] আপটাইম: ${UPTIME_STR} (${UPTIME_SECONDS}s)"
 
-              # ⏰ ৫ ঘণ্টা ৫৫ মিনিট = ৩৫৫ মিনিট = ২১৩০০ সেকেন্ড
-              if [ "$UPTIME_SECONDS" -ge 21300 ]; then
-                echo "⚠️ [System Bot] ৫ ঘণ্টা ৫৫ মিনিট পূর্ণ হয়েছে! নতুন সেশনের রিকোয়েস্ট পাঠানো হচ্ছে..."
+              # ⏰ 5 ঘণ্টা 55 মিনিট = 358 মিনিট = 21480 সেকেন্ড
+              if [ "$UPTIME_SECONDS" -ge 21480 ]; then
+                echo "⚠️ [System Bot] 5 ঘণ্টা 58 মিনিট পূর্ণ হয়েছে! নতুন সেশনের রিকোয়েস্ট পাঠানো হচ্ছে..."
                 
                 REQUEST_SENT=false
                 FAIL_LOG=""
